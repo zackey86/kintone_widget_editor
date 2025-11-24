@@ -60,7 +60,7 @@ export const EditorContent = forwardRef(function EditorContent({ html, setHtml, 
           display: activeTab === CONFIG.TAB_TYPES.HTML ? 'flex' : 'none',
           flexDirection: 'column',
           height: '100%',
-          overflow: 'hidden'
+          overflow: 'scroll'
         }}
       >
         <CodeMirror
