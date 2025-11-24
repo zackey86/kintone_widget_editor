@@ -2,7 +2,7 @@ import { useRef, useEffect, useMemo, useImperativeHandle, forwardRef } from 'rea
 import CodeMirror from '@uiw/react-codemirror';
 import { html as htmlLang } from '@codemirror/lang-html';
 import { lineNumbers, keymap } from '@codemirror/view';
-import { bracketMatching, foldGutter, indentOnInput, indentUnit } from '@codemirror/language';
+import { bracketMatching, foldGutter, indentOnInput, indentUnit, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
 import { searchKeymap } from '@codemirror/search';
 import { indentSelection } from '@codemirror/commands';
 import { CONFIG } from '../config/constants.js';
@@ -20,13 +20,14 @@ export const EditorContent = forwardRef(function EditorContent({ html, setHtml, 
 
   // CodeMirrorの拡張機能を設定
   const extensions = useMemo(() => [
-    htmlLang(),
-    lineNumbers(),
-    bracketMatching(),
-    foldGutter(),
-    indentOnInput(),
-    indentUnit.of(CONFIG.HTML_FORMAT.INDENT_CHAR.repeat(CONFIG.HTML_FORMAT.INDENT_SIZE)),
-    keymap.of(searchKeymap)
+    htmlLang(), // HTML言語サポート（シンタックスハイライトを含む）
+    lineNumbers(), // 行番号
+    bracketMatching(), // 括弧マッチング
+    foldGutter(), // コード折りたたみ
+    indentOnInput(), // 自動インデント
+    indentUnit.of(CONFIG.HTML_FORMAT.INDENT_CHAR.repeat(CONFIG.HTML_FORMAT.INDENT_SIZE)), // インデント単位
+    syntaxHighlighting(defaultHighlightStyle), // シンタックスハイライト（デフォルトスタイル）
+    keymap.of(searchKeymap) // 検索・置換
   ], []);
 
   // 自動インデント関数を親コンポーネントに公開
