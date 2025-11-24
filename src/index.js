@@ -24,6 +24,7 @@ function showHtmlEditorPanel() {
     panelContainer.style.height = '100%';
     panelContainer.style.pointerEvents = 'none';
     panelContainer.style.zIndex = '99998';
+    panelContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
     document.body.appendChild(panelContainer);
   }
 

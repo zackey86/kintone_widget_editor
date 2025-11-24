@@ -91,7 +91,8 @@ export function applyHtmlToEditor(html) {
     }
     return;
   }
-
+  // 初期化防止のためフォーカスを当てる
+  targetEditor.focus();
   targetEditor.innerHTML = html;
   
   // 変更イベントを発火（kintoneが変更を検知するため）
