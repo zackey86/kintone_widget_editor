@@ -15,8 +15,12 @@
       // 最小化アイコン設定
       MINIMIZE_ICON_ID: 'html-editor-minimize-icon',
       MINIMIZE_ICON_SIZE: '40px',
-      MINIMIZE_ICON_BOTTOM: '20px',
+      MINIMIZE_ICON_TOP: '20px',
       MINIMIZE_ICON_RIGHT: '20px',
+      
+      // リサイズハンドル設定
+      RESIZE_HANDLE_SIZE: '10px',
+      RESIZE_HANDLE_CORNER_SIZE: '15px',
       
       // タイムアウト
       DIALOG_RENDER_DELAY: 300,
@@ -30,6 +34,8 @@
         APPLY: 'btn-apply',
         REFRESH: 'btn-refresh',
         CLOSE: 'btn-close',
+        RESIZE: 'btn-resize',
+        MAXIMIZE: 'btn-maximize',
         TABS: 'editor-tabs',
         TAB: 'editor-tab',
         ACTIVE: 'active',
@@ -37,7 +43,12 @@
         TEXTAREA: 'html-textarea',
         PREVIEW: 'preview-area',
         STATUS_BAR: 'status-bar',
-        TITLE: 'title'
+        TITLE: 'title',
+        RESIZE_HANDLE: 'resize-handle',
+        RESIZE_HANDLE_LEFT: 'resize-handle-left',
+        RESIZE_HANDLE_BOTTOM: 'resize-handle-bottom',
+        RESIZE_HANDLE_CORNER: 'resize-handle-corner',
+        MAXIMIZED: 'maximized'
       },
       
       // タブタイプ
@@ -89,6 +100,9 @@
         REFRESH: '↻ 再取得',
         APPLY: '✓ 適用',
         CLOSE: '−',
+        RESIZE: '⇱',
+        MAXIMIZE: '□',
+        RESTORE: '❐',
         READY: 'Ready'
       },
       
@@ -96,7 +110,10 @@
       BUTTON_TITLES: {
         REFRESH: 'リッチエディタから再取得',
         APPLY: '変更を適用',
-        CLOSE: '最小化'
+        CLOSE: '最小化',
+        RESIZE: 'リサイズ',
+        MAXIMIZE: '最大化',
+        RESTORE: '元に戻す'
       },
       
       // プレースホルダー
@@ -148,6 +165,18 @@
             font-family: monospace;
             display: flex;
             flex-direction: column;
+            resize: none;
+            overflow: hidden;
+          }
+          ${panelId}.${CONFIG.CLASSES.MAXIMIZED} {
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 100% !important;
+            border-radius: 0;
           }
           ${panelId} .${CONFIG.CLASSES.HEADER} {
             background: #333;
@@ -202,6 +231,20 @@
           }
           ${panelId} .${CONFIG.CLASSES.CLOSE}:hover {
             background: #d32f2f;
+          }
+          ${panelId} .${CONFIG.CLASSES.RESIZE} {
+            background: #9C27B0;
+            color: white;
+          }
+          ${panelId} .${CONFIG.CLASSES.RESIZE}:hover {
+            background: #7B1FA2;
+          }
+          ${panelId} .${CONFIG.CLASSES.MAXIMIZE} {
+            background: #607D8B;
+            color: white;
+          }
+          ${panelId} .${CONFIG.CLASSES.MAXIMIZE}:hover {
+            background: #455A64;
           }
           ${panelId} .${CONFIG.CLASSES.BODY} {
             display: flex;
@@ -262,7 +305,7 @@
           }
           #${CONFIG.MINIMIZE_ICON_ID} {
             position: fixed;
-            bottom: ${CONFIG.MINIMIZE_ICON_BOTTOM};
+            top: ${CONFIG.MINIMIZE_ICON_TOP};
             right: ${CONFIG.MINIMIZE_ICON_RIGHT};
             width: ${CONFIG.MINIMIZE_ICON_SIZE};
             height: ${CONFIG.MINIMIZE_ICON_SIZE};
@@ -287,6 +330,40 @@
           #${CONFIG.MINIMIZE_ICON_ID}::before {
             content: '</>';
           }
+          ${panelId} .${CONFIG.CLASSES.RESIZE_HANDLE} {
+            position: absolute;
+            background: transparent;
+            z-index: 100000;
+          }
+          ${panelId} .${CONFIG.CLASSES.RESIZE_HANDLE_LEFT} {
+            top: 0;
+            left: 0;
+            width: ${CONFIG.RESIZE_HANDLE_SIZE};
+            height: 100%;
+            cursor: ew-resize;
+          }
+          ${panelId} .${CONFIG.CLASSES.RESIZE_HANDLE_BOTTOM} {
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: ${CONFIG.RESIZE_HANDLE_SIZE};
+            cursor: ns-resize;
+          }
+          ${panelId} .${CONFIG.CLASSES.RESIZE_HANDLE_CORNER} {
+            bottom: 0;
+            left: 0;
+            width: ${CONFIG.RESIZE_HANDLE_CORNER_SIZE};
+            height: ${CONFIG.RESIZE_HANDLE_CORNER_SIZE};
+            cursor: nesw-resize;
+            background: rgba(97, 175, 239, 0.3);
+            border-radius: 0 0 0 8px;
+          }
+          ${panelId} .${CONFIG.CLASSES.RESIZE_HANDLE_CORNER}:hover {
+            background: rgba(97, 175, 239, 0.6);
+          }
+          ${panelId}.${CONFIG.CLASSES.MAXIMIZED} .${CONFIG.CLASSES.RESIZE_HANDLE} {
+            display: none;
+          }
         </style>
       `;
     }
@@ -303,6 +380,7 @@
         <div class="${CONFIG.CLASSES.HEADER}">
           <span class="${CONFIG.CLASSES.TITLE}">HTML Editor</span>
           <div class="${CONFIG.CLASSES.BUTTONS}">
+            <button class="${CONFIG.CLASSES.BUTTON} ${CONFIG.CLASSES.MAXIMIZE}" title="${CONFIG.BUTTON_TITLES.MAXIMIZE}">${CONFIG.BUTTON_TEXTS.MAXIMIZE}</button>
             <button class="${CONFIG.CLASSES.BUTTON} ${CONFIG.CLASSES.REFRESH}" title="${CONFIG.BUTTON_TITLES.REFRESH}">${CONFIG.BUTTON_TEXTS.REFRESH}</button>
             <button class="${CONFIG.CLASSES.BUTTON} ${CONFIG.CLASSES.APPLY}" title="${CONFIG.BUTTON_TITLES.APPLY}">${CONFIG.BUTTON_TEXTS.APPLY}</button>
             <button class="${CONFIG.CLASSES.BUTTON} ${CONFIG.CLASSES.CLOSE}" title="${CONFIG.BUTTON_TITLES.CLOSE}">${CONFIG.BUTTON_TEXTS.CLOSE}</button>
@@ -319,6 +397,9 @@
           </div>
         </div>
         <div class="${CONFIG.CLASSES.STATUS_BAR}">${CONFIG.BUTTON_TEXTS.READY}</div>
+        <div class="${CONFIG.CLASSES.RESIZE_HANDLE} ${CONFIG.CLASSES.RESIZE_HANDLE_LEFT}"></div>
+        <div class="${CONFIG.CLASSES.RESIZE_HANDLE} ${CONFIG.CLASSES.RESIZE_HANDLE_BOTTOM}"></div>
+        <div class="${CONFIG.CLASSES.RESIZE_HANDLE} ${CONFIG.CLASSES.RESIZE_HANDLE_CORNER}"></div>
       `;
   
       // イベント設定
@@ -350,7 +431,11 @@
       const applyButton = findElementByClass(panel, CONFIG.CLASSES.APPLY);
       const refreshButton = findElementByClass(panel, CONFIG.CLASSES.REFRESH);
       const closeButton = findElementByClass(panel, CONFIG.CLASSES.CLOSE);
+      const maximizeButton = findElementByClass(panel, CONFIG.CLASSES.MAXIMIZE);
       const header = findElementByClass(panel, CONFIG.CLASSES.HEADER);
+      const resizeHandleLeft = findElementByClass(panel, CONFIG.CLASSES.RESIZE_HANDLE_LEFT);
+      const resizeHandleBottom = findElementByClass(panel, CONFIG.CLASSES.RESIZE_HANDLE_BOTTOM);
+      const resizeHandleCorner = findElementByClass(panel, CONFIG.CLASSES.RESIZE_HANDLE_CORNER);
   
       // タブ切り替え
       tabs.forEach(tab => {
@@ -373,6 +458,16 @@
       closeButton.addEventListener('click', function() {
         minimizeHtmlEditorPanel();
       });
+  
+      // 最大化ボタン
+      maximizeButton.addEventListener('click', function() {
+        toggleMaximize(panel, maximizeButton);
+      });
+  
+      // リサイズハンドル
+      makeResizable(panel, resizeHandleLeft, 'horizontal');
+      makeResizable(panel, resizeHandleBottom, 'vertical');
+      makeResizable(panel, resizeHandleCorner, 'both');
   
       // ドラッグ移動機能
       makeDraggable(panel, header);
@@ -419,6 +514,132 @@
       if (html !== null) {
         textarea.value = formatHtml(html);
         statusBar.textContent = `${CONFIG.MESSAGES.REFRESHED} - ${new Date().toLocaleTimeString()}`;
+      }
+    }
+  
+    // 最大化前の状態を保存
+    let savedPanelState = null;
+  
+    /**
+     * 最大化/復元を切り替え
+     * @param {HTMLElement} panel - パネル要素
+     * @param {HTMLElement} button - 最大化ボタン要素
+     */
+    function toggleMaximize(panel, button) {
+      const isMaximized = panel.classList.contains(CONFIG.CLASSES.MAXIMIZED);
+      
+      if (isMaximized) {
+        // 復元
+        panel.classList.remove(CONFIG.CLASSES.MAXIMIZED);
+        if (savedPanelState) {
+          panel.style.width = savedPanelState.width;
+          panel.style.height = savedPanelState.height;
+          panel.style.top = savedPanelState.top;
+          panel.style.left = savedPanelState.left;
+          panel.style.right = savedPanelState.right;
+          panel.style.maxHeight = savedPanelState.maxHeight;
+          
+          // エディタの高さも復元
+          const textarea = findElementByClass(panel, CONFIG.CLASSES.TEXTAREA);
+          const preview = findElementByClass(panel, CONFIG.CLASSES.PREVIEW);
+          if (textarea && preview) {
+            textarea.style.height = savedPanelState.textareaHeight;
+            preview.style.height = savedPanelState.previewHeight;
+          }
+        }
+        button.textContent = CONFIG.BUTTON_TEXTS.MAXIMIZE;
+        button.title = CONFIG.BUTTON_TITLES.MAXIMIZE;
+      } else {
+        // 最大化
+        const computedStyle = document.defaultView.getComputedStyle(panel);
+        savedPanelState = {
+          width: panel.style.width || computedStyle.width,
+          height: panel.style.height || computedStyle.height,
+          top: panel.style.top || computedStyle.top,
+          left: panel.style.left || computedStyle.left,
+          right: panel.style.right || computedStyle.right,
+          maxHeight: panel.style.maxHeight || computedStyle.maxHeight
+        };
+        
+        const textarea = findElementByClass(panel, CONFIG.CLASSES.TEXTAREA);
+        const preview = findElementByClass(panel, CONFIG.CLASSES.PREVIEW);
+        if (textarea && preview) {
+          const textareaStyle = document.defaultView.getComputedStyle(textarea);
+          const previewStyle = document.defaultView.getComputedStyle(preview);
+          savedPanelState.textareaHeight = textarea.style.height || textareaStyle.height;
+          savedPanelState.previewHeight = preview.style.height || previewStyle.height;
+        }
+        
+        panel.classList.add(CONFIG.CLASSES.MAXIMIZED);
+        
+        // エディタの高さを調整
+        if (textarea && preview) {
+          const windowHeight = window.innerHeight;
+          const editorHeight = windowHeight - 150; // ヘッダーとタブ、ステータスバーの高さを考慮
+          textarea.style.height = Math.max(200, editorHeight) + 'px';
+          preview.style.height = Math.max(200, editorHeight) + 'px';
+        }
+        
+        button.textContent = CONFIG.BUTTON_TEXTS.RESTORE;
+        button.title = CONFIG.BUTTON_TITLES.RESTORE;
+      }
+    }
+  
+    /**
+     * 要素をリサイズ可能にする
+     * @param {HTMLElement} element - リサイズ可能にする要素
+     * @param {HTMLElement} handle - リサイズハンドル要素
+     * @param {string} direction - リサイズ方向 ('horizontal', 'vertical', 'both')
+     */
+    function makeResizable(element, handle, direction) {
+      let startX = 0;
+      let startY = 0;
+      let startWidth = 0;
+      let startHeight = 0;
+      let startLeft = 0;
+      let startTop = 0;
+      
+      handle.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        startX = e.clientX;
+        startY = e.clientY;
+        startWidth = parseInt(document.defaultView.getComputedStyle(element).width, 10);
+        startHeight = parseInt(document.defaultView.getComputedStyle(element).height, 10);
+        startLeft = element.offsetLeft;
+        startTop = element.offsetTop;
+        
+        document.addEventListener('mousemove', handleResize);
+        document.addEventListener('mouseup', stopResize);
+      });
+      
+      function handleResize(e) {
+        if (direction === 'horizontal' || direction === 'both') {
+          // 左端からのリサイズ: 左方向にドラッグすると幅が増える
+          const deltaX = e.clientX - startX;
+          const width = startWidth - deltaX;
+          if (width > 300) {
+            element.style.width = width + 'px';
+            element.style.right = 'auto';
+            // 左端の位置を調整
+            const newLeft = startLeft + deltaX;
+            element.style.left = newLeft + 'px';
+          }
+        }
+        
+        if (direction === 'vertical' || direction === 'both') {
+          const height = startHeight + (e.clientY - startY);
+          if (height > 200) {
+            element.style.height = height + 'px';
+            element.style.maxHeight = 'none';
+          }
+        }
+      }
+      
+      function stopResize() {
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', stopResize);
       }
     }
   
@@ -498,17 +719,27 @@
         return null;
       }
   
+      let html = '';
+      
       // iframeの場合
       if (targetEditor.tagName === 'IFRAME') {
         try {
-          return targetEditor.contentDocument.body.innerHTML;
+          html = targetEditor.contentDocument.body.innerHTML;
         } catch (error) {
           console.error(CONFIG.MESSAGES.IFRAME_ACCESS_ERROR, error);
           return null;
         }
+      } else {
+        html = targetEditor.innerHTML;
       }
   
-      return targetEditor.innerHTML;
+      // プレースホルダー（<p>本文</p>）の場合は空文字列を返す
+      const trimmedHtml = html.trim();
+      if (trimmedHtml === '<p>本文</p>' || /^<p>本文<\/p>[\s\n\r]*$/.test(trimmedHtml)) {
+        return '';
+      }
+  
+      return html;
     }
   
     /**
@@ -619,6 +850,20 @@
     }
   
     /**
+     * パネルを完全に非表示（ダイアログが閉じた時など）
+     */
+    function hideHtmlEditorPanel() {
+      if (htmlEditorPanel && document.body.contains(htmlEditorPanel)) {
+        htmlEditorPanel.style.display = 'none';
+      }
+      // 最小化アイコンも非表示
+      const minimizeIcon = document.getElementById(CONFIG.MINIMIZE_ICON_ID);
+      if (minimizeIcon) {
+        minimizeIcon.style.display = 'none';
+      }
+    }
+  
+    /**
      * ダイアログの開閉を監視するMutationObserverを初期化
      */
     function initializeDialogObserver() {
@@ -638,7 +883,7 @@
             if (node.nodeType === Node.ELEMENT_NODE &&
                 node.classList?.contains(CONFIG.DIALOG_BG_CLASS)) {
               console.log(CONFIG.MESSAGES.DIALOG_CLOSED);
-              minimizeHtmlEditorPanel();
+              hideHtmlEditorPanel();
             }
           });
         });
