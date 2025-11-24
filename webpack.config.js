@@ -4,7 +4,7 @@ module.exports = {
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'edit_dialog.bundle.js',
+    filename: 'edit_dialog.min.js',
     library: 'KintoneHtmlEditor',
     libraryTarget: 'umd',
     globalObject: 'this',
