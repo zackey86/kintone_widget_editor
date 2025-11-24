@@ -95,7 +95,13 @@ function initializeDialogObserver() {
         if (node.nodeType === Node.ELEMENT_NODE &&
             node.classList?.contains(CONFIG.DIALOG_BG_CLASS)) {
           console.log(CONFIG.MESSAGES.DIALOG_OPENED);
-          showHtmlEditorPanel();
+          // ミニマムアイコンを表示
+          isMinimized = true;
+          if (minimizeIconContainer && minimizeIconRoot) {
+            minimizeIconRoot.render(
+              <MinimizeIcon onShow={showHtmlEditorPanel} visible={true} />
+            );
+          }
         }
       });
 
