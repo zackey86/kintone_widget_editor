@@ -2,7 +2,7 @@
 node_modules/
 
 # Build output
-dist/
+# dist/  # Temporarily commented out to include in release assets
 
 # Backup files
 *.backup
