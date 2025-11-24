@@ -16,6 +16,12 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@codemirror/commands": "^6.10.0",
+    "@codemirror/lang-html": "^6.4.0",
+    "@codemirror/language": "^6.11.3",
+    "@codemirror/search": "^6.5.11",
+    "@codemirror/view": "^6.38.8",
+    "@uiw/react-codemirror": "^4.21.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -30,4 +36,3 @@
     "webpack-cli": "^5.1.4"
   }
 }
-

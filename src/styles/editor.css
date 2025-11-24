@@ -149,17 +149,66 @@
   background: #1e1e1e;
   color: #d4d4d4;
   border: none;
-  padding: 15px;
+  padding: 0;
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;
   line-height: 1.5;
   resize: none;
   box-sizing: border-box;
   flex: 1;
+  height: 100%;
 }
 
 #custom-html-editor-panel .html-textarea:focus {
   outline: none;
+}
+
+/* CodeMirror 6のスタイルカスタマイズ */
+#custom-html-editor-panel .html-textarea .cm-editor {
+  height: 100%;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+}
+
+#custom-html-editor-panel .html-textarea .cm-scroller {
+  overflow: auto;
+  height: 100%;
+}
+
+#custom-html-editor-panel .html-textarea .cm-content {
+  padding: 15px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+#custom-html-editor-panel .html-textarea .cm-focused {
+  outline: none;
+}
+
+#custom-html-editor-panel .html-textarea .cm-line {
+  color: #d4d4d4;
+}
+
+#custom-html-editor-panel .html-textarea .cm-gutters {
+  background: #252526;
+  border-right: 1px solid #3e3e42;
+  color: #858585;
+}
+
+#custom-html-editor-panel .html-textarea .cm-lineNumbers .cm-gutterElement {
+  padding: 0 8px;
+  min-width: 20px;
+  text-align: right;
+}
+
+#custom-html-editor-panel .html-textarea .cm-foldGutter {
+  width: 16px;
+}
+
+#custom-html-editor-panel .html-textarea .cm-foldGutter .cm-gutterElement {
+  padding: 0 4px;
 }
 
 #custom-html-editor-panel .btn-auto-indent {

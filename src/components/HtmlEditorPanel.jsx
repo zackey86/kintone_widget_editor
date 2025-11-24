@@ -19,8 +19,9 @@ export function HtmlEditorPanel({ onMinimize }) {
   const resizeLeftHandleRef = useRef(null);
   const resizeBottomHandleRef = useRef(null);
   const resizeCornerHandleRef = useRef(null);
+  const editorContentRef = useRef(null);
   
-  const { html, setHtml, statusMessage, setStatusMessage, refresh, apply, autoIndent } = useEditor();
+  const { html, setHtml, statusMessage, setStatusMessage, refresh, apply } = useEditor();
   
   const { elementRef: dragElementRef, handleRef: dragHandleRef } = useDraggable({ enabled: true });
   const { elementRef: resizeLeftRef, handleRef: resizeLeftHandleRefFromHook } = useResizable({ enabled: true, direction: 'horizontal' });
@@ -206,7 +207,11 @@ export function HtmlEditorPanel({ onMinimize }) {
   };
 
   const handleAutoIndent = () => {
-    autoIndent(html);
+    // CodeMirrorの自動インデント機能を使用
+    if (editorContentRef.current && editorContentRef.current.autoIndent) {
+      editorContentRef.current.autoIndent();
+      setStatusMessage(`✓ 自動インデント適用 - ${new Date().toLocaleTimeString()}`);
+    }
   };
 
   return (
@@ -224,7 +229,7 @@ export function HtmlEditorPanel({ onMinimize }) {
       />
       <div className={CONFIG.CLASSES.BODY}>
         <EditorTabs activeTab={activeTab} onTabChange={setActiveTab} />
-        <EditorContent html={html} setHtml={setHtml} activeTab={activeTab} />
+        <EditorContent ref={editorContentRef} html={html} setHtml={setHtml} activeTab={activeTab} />
       </div>
       <StatusBar message={statusMessage} />
       <div 
