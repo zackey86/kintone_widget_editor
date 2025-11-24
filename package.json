@@ -1,6 +1,6 @@
 {
   "name": "kintone-widget-editor",
-  "version": "0.1.0",
+  "version": "1.1.1",
   "description": "HTML Editor for kintone おしらせ",
   "main": "src/index.js",
   "scripts": {
