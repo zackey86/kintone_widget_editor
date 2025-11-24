@@ -16,12 +16,16 @@ export function HtmlEditorPanel({ onMinimize }) {
   const [savedPanelState, setSavedPanelState] = useState(null);
   
   const panelRef = useRef(null);
+  const resizeLeftHandleRef = useRef(null);
+  const resizeBottomHandleRef = useRef(null);
+  const resizeCornerHandleRef = useRef(null);
+  
   const { html, setHtml, statusMessage, setStatusMessage, refresh, apply, autoIndent } = useEditor();
   
   const { elementRef: dragElementRef, handleRef: dragHandleRef } = useDraggable({ enabled: true });
-  const { elementRef: resizeLeftRef, handleRef: resizeLeftHandleRef } = useResizable({ enabled: true, direction: 'horizontal' });
-  const { elementRef: resizeBottomRef, handleRef: resizeBottomHandleRef } = useResizable({ enabled: true, direction: 'vertical' });
-  const { elementRef: resizeCornerRef, handleRef: resizeCornerHandleRef } = useResizable({ enabled: true, direction: 'both' });
+  const { elementRef: resizeLeftRef, handleRef: resizeLeftHandleRefFromHook } = useResizable({ enabled: true, direction: 'horizontal' });
+  const { elementRef: resizeBottomRef, handleRef: resizeBottomHandleRefFromHook } = useResizable({ enabled: true, direction: 'vertical' });
+  const { elementRef: resizeCornerRef, handleRef: resizeCornerHandleRefFromHook } = useResizable({ enabled: true, direction: 'both' });
 
   // パネルとドラッグハンドルのrefを設定
   useEffect(() => {
@@ -30,33 +34,38 @@ export function HtmlEditorPanel({ onMinimize }) {
       resizeLeftRef.current = panelRef.current;
       resizeBottomRef.current = panelRef.current;
       resizeCornerRef.current = panelRef.current;
-    }
-  }, [dragElementRef, resizeLeftRef, resizeBottomRef, resizeCornerRef]);
-
-  // ヘッダーをドラッグハンドルとして設定
-  useEffect(() => {
-    if (panelRef.current) {
+      
+      // ヘッダーをドラッグハンドルとして設定
       const header = findElementByClass(panelRef.current, CONFIG.CLASSES.HEADER);
       if (header) {
         dragHandleRef.current = header;
       }
     }
-  }, [dragHandleRef]);
+  }, []);
 
-  // リサイズハンドルの設定
+  // リサイズハンドルのrefを設定（DOMがレンダリングされた後に実行）
   useEffect(() => {
-    if (panelRef.current) {
-      const leftHandle = findElementByClass(panelRef.current, CONFIG.CLASSES.RESIZE_HANDLE_LEFT);
-      const bottomHandle = findElementByClass(panelRef.current, CONFIG.CLASSES.RESIZE_HANDLE_BOTTOM);
-      const cornerHandle = findElementByClass(panelRef.current, CONFIG.CLASSES.RESIZE_HANDLE_CORNER);
-      
-      if (leftHandle) resizeLeftHandleRef.current = leftHandle;
-      if (bottomHandle) resizeBottomHandleRef.current = bottomHandle;
-      if (cornerHandle) resizeCornerHandleRef.current = cornerHandle;
-    }
-  }, [resizeLeftHandleRef, resizeBottomHandleRef, resizeCornerHandleRef]);
+    const setupResizeHandles = () => {
+      if (resizeLeftHandleRef.current) {
+        resizeLeftHandleRefFromHook.current = resizeLeftHandleRef.current;
+      }
+      if (resizeBottomHandleRef.current) {
+        resizeBottomHandleRefFromHook.current = resizeBottomHandleRef.current;
+      }
+      if (resizeCornerHandleRef.current) {
+        resizeCornerHandleRefFromHook.current = resizeCornerHandleRef.current;
+      }
+    };
 
-  // 編集エリアの高さを更新
+    // DOMが完全にレンダリングされた後に実行
+    const timeoutId = setTimeout(setupResizeHandles, 0);
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [resizeLeftHandleRefFromHook, resizeBottomHandleRefFromHook, resizeCornerHandleRefFromHook]);
+
+  // 編集エリアの高さを更新（手動リサイズ時のみ呼び出す）
   const updateEditorAreaHeight = () => {
     const panel = panelRef.current;
     if (!panel) return;
@@ -66,7 +75,9 @@ export function HtmlEditorPanel({ onMinimize }) {
     
     if (!textarea || !preview) return;
     
-    const panelHeight = panel.offsetHeight || parseInt(document.defaultView.getComputedStyle(panel).height, 10);
+    const panelHeight = panel.offsetHeight;
+    if (!panelHeight || panelHeight === 0) return;
+    
     const header = findElementByClass(panel, CONFIG.CLASSES.HEADER);
     const tabs = findElementByClass(panel, CONFIG.CLASSES.TABS);
     const statusBar = findElementByClass(panel, CONFIG.CLASSES.STATUS_BAR);
@@ -78,6 +89,7 @@ export function HtmlEditorPanel({ onMinimize }) {
     const availableHeight = panelHeight - headerHeight - tabsHeight - statusBarHeight;
     const editorHeight = Math.max(200, availableHeight);
     
+    // 高さを設定（CSSの固定高さを上書き）
     textarea.style.height = editorHeight + 'px';
     preview.style.height = editorHeight + 'px';
   };
@@ -102,9 +114,10 @@ export function HtmlEditorPanel({ onMinimize }) {
       });
       
       panel.classList.add(CONFIG.CLASSES.MAXIMIZED);
-      setTimeout(() => {
+      // 最大化時は次のフレームで高さを更新
+      requestAnimationFrame(() => {
         updateEditorAreaHeight();
-      }, 0);
+      });
     } else {
       // 復元
       panel.classList.remove(CONFIG.CLASSES.MAXIMIZED);
@@ -117,37 +130,45 @@ export function HtmlEditorPanel({ onMinimize }) {
         panel.style.maxHeight = savedPanelState.maxHeight;
       }
       
-      setTimeout(() => {
+      // 復元時は次のフレームで高さを更新
+      requestAnimationFrame(() => {
         updateEditorAreaHeight();
-      }, 0);
+      });
     }
     
     setIsMaximized(newIsMaximized);
   };
 
-  // 初回マウント時にエディタからHTMLを取得
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      refresh();
-    }, CONFIG.DIALOG_RENDER_DELAY);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  // リサイズ後に高さを更新
+  // 初回マウント時にエディタからHTMLを取得と高さを設定
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
 
-    const resizeObserver = new ResizeObserver(() => {
-      updateEditorAreaHeight();
-    });
-
-    resizeObserver.observe(panel);
-
-    return () => {
-      resizeObserver.disconnect();
+    // パネルの初期高さを確実に設定するため、複数回試行
+    let retryCount = 0;
+    const maxRetries = 10;
+    
+    const initHeight = () => {
+      const panelHeight = panel.offsetHeight;
+      // パネルの高さが取得できたら高さを設定
+      if (panelHeight > 0) {
+        updateEditorAreaHeight();
+        // エディタからHTMLを取得
+        refresh();
+      } else if (retryCount < maxRetries) {
+        // まだ高さが取得できない場合は再試行
+        retryCount++;
+        setTimeout(initHeight, 50);
+      } else {
+        // 最大試行回数に達した場合でも、デフォルト高さで設定
+        console.warn('Panel height not detected, using default');
+        updateEditorAreaHeight();
+        refresh();
+      }
     };
+
+    // 最初の試行（少し遅延させてDOMが完全にレンダリングされるのを待つ）
+    setTimeout(initHeight, CONFIG.DIALOG_RENDER_DELAY);
   }, []);
 
   // aria-hiddenの監視
@@ -192,7 +213,6 @@ export function HtmlEditorPanel({ onMinimize }) {
     <div
       ref={panelRef}
       id={CONFIG.PANEL_ID}
-      style={{ display: 'flex' }}
     >
       <EditorHeader
         onApply={handleApply}
@@ -207,9 +227,18 @@ export function HtmlEditorPanel({ onMinimize }) {
         <EditorContent html={html} setHtml={setHtml} activeTab={activeTab} />
       </div>
       <StatusBar message={statusMessage} />
-      <div className={`${CONFIG.CLASSES.RESIZE_HANDLE} ${CONFIG.CLASSES.RESIZE_HANDLE_LEFT}`} />
-      <div className={`${CONFIG.CLASSES.RESIZE_HANDLE} ${CONFIG.CLASSES.RESIZE_HANDLE_BOTTOM}`} />
-      <div className={`${CONFIG.CLASSES.RESIZE_HANDLE} ${CONFIG.CLASSES.RESIZE_HANDLE_CORNER}`} />
+      <div 
+        ref={resizeLeftHandleRef}
+        className={`${CONFIG.CLASSES.RESIZE_HANDLE} ${CONFIG.CLASSES.RESIZE_HANDLE_LEFT}`} 
+      />
+      <div 
+        ref={resizeBottomHandleRef}
+        className={`${CONFIG.CLASSES.RESIZE_HANDLE} ${CONFIG.CLASSES.RESIZE_HANDLE_BOTTOM}`} 
+      />
+      <div 
+        ref={resizeCornerHandleRef}
+        className={`${CONFIG.CLASSES.RESIZE_HANDLE} ${CONFIG.CLASSES.RESIZE_HANDLE_CORNER}`} 
+      />
     </div>
   );
 }

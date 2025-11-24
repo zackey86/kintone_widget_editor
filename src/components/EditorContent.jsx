@@ -14,6 +14,7 @@ export function EditorContent({ html, setHtml, activeTab }) {
   }, [activeTab, html]);
 
   const handleKeyDown = (e) => {
+    // Tabキーでインデントを追加
     if (e.key === 'Tab') {
       e.preventDefault();
       const textarea = textareaRef.current;
@@ -30,6 +31,7 @@ export function EditorContent({ html, setHtml, activeTab }) {
   };
 
   return (
+    // エディタコンテンツエリア
     <div className={CONFIG.CLASSES.CONTENT}>
       <textarea
         ref={textareaRef}

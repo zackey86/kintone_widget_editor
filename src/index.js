@@ -17,6 +17,13 @@ function showHtmlEditorPanel() {
   if (!panelContainer) {
     panelContainer = document.createElement('div');
     panelContainer.id = CONFIG.PANEL_ID + '-container';
+    panelContainer.style.position = 'fixed';
+    panelContainer.style.top = '0';
+    panelContainer.style.left = '0';
+    panelContainer.style.width = '100%';
+    panelContainer.style.height = '100%';
+    panelContainer.style.pointerEvents = 'none';
+    panelContainer.style.zIndex = '99998';
     document.body.appendChild(panelContainer);
   }
 
@@ -24,7 +31,8 @@ function showHtmlEditorPanel() {
     panelRoot = createRoot(panelContainer);
   }
 
-  panelContainer.style.display = 'flex';
+  panelContainer.style.display = 'block';
+  panelContainer.style.pointerEvents = 'auto';
   panelContainer.removeAttribute('aria-hidden');
 
   // 最小化アイコンを非表示
