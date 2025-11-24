@@ -36,6 +36,7 @@
         CLOSE: 'btn-close',
         RESIZE: 'btn-resize',
         MAXIMIZE: 'btn-maximize',
+        AUTO_INDENT: 'btn-auto-indent',
         TABS: 'editor-tabs',
         TAB: 'editor-tab',
         ACTIVE: 'active',
@@ -103,6 +104,7 @@
         RESIZE: '⇱',
         MAXIMIZE: '□',
         RESTORE: '❐',
+        AUTO_INDENT: '⇥ 自動インデント',
         READY: 'Ready'
       },
       
@@ -113,7 +115,8 @@
         CLOSE: '最小化',
         RESIZE: 'リサイズ',
         MAXIMIZE: '最大化',
-        RESTORE: '元に戻す'
+        RESTORE: '元に戻す',
+        AUTO_INDENT: 'HTMLを自動整形（インデント付与）'
       },
       
       // プレースホルダー
@@ -287,6 +290,13 @@
           ${panelId} .${CONFIG.CLASSES.TEXTAREA}:focus {
             outline: none;
           }
+          ${panelId} .${CONFIG.CLASSES.AUTO_INDENT} {
+            background: #FF9800;
+            color: white;
+          }
+          ${panelId} .${CONFIG.CLASSES.AUTO_INDENT}:hover {
+            background: #F57C00;
+          }
           ${panelId} .${CONFIG.CLASSES.PREVIEW} {
             width: 100%;
             height: ${CONFIG.EDITOR_HEIGHT};
@@ -381,6 +391,7 @@
           <span class="${CONFIG.CLASSES.TITLE}">HTML Editor</span>
           <div class="${CONFIG.CLASSES.BUTTONS}">
             <button class="${CONFIG.CLASSES.BUTTON} ${CONFIG.CLASSES.MAXIMIZE}" title="${CONFIG.BUTTON_TITLES.MAXIMIZE}">${CONFIG.BUTTON_TEXTS.MAXIMIZE}</button>
+            <button class="${CONFIG.CLASSES.BUTTON} ${CONFIG.CLASSES.AUTO_INDENT}" title="${CONFIG.BUTTON_TITLES.AUTO_INDENT}">${CONFIG.BUTTON_TEXTS.AUTO_INDENT}</button>
             <button class="${CONFIG.CLASSES.BUTTON} ${CONFIG.CLASSES.REFRESH}" title="${CONFIG.BUTTON_TITLES.REFRESH}">${CONFIG.BUTTON_TEXTS.REFRESH}</button>
             <button class="${CONFIG.CLASSES.BUTTON} ${CONFIG.CLASSES.APPLY}" title="${CONFIG.BUTTON_TITLES.APPLY}">${CONFIG.BUTTON_TEXTS.APPLY}</button>
             <button class="${CONFIG.CLASSES.BUTTON} ${CONFIG.CLASSES.CLOSE}" title="${CONFIG.BUTTON_TITLES.CLOSE}">${CONFIG.BUTTON_TEXTS.CLOSE}</button>
@@ -432,47 +443,183 @@
       const refreshButton = findElementByClass(panel, CONFIG.CLASSES.REFRESH);
       const closeButton = findElementByClass(panel, CONFIG.CLASSES.CLOSE);
       const maximizeButton = findElementByClass(panel, CONFIG.CLASSES.MAXIMIZE);
+      const autoIndentButton = findElementByClass(panel, CONFIG.CLASSES.AUTO_INDENT);
       const header = findElementByClass(panel, CONFIG.CLASSES.HEADER);
       const resizeHandleLeft = findElementByClass(panel, CONFIG.CLASSES.RESIZE_HANDLE_LEFT);
       const resizeHandleBottom = findElementByClass(panel, CONFIG.CLASSES.RESIZE_HANDLE_BOTTOM);
       const resizeHandleCorner = findElementByClass(panel, CONFIG.CLASSES.RESIZE_HANDLE_CORNER);
-  
+
       // タブ切り替え
       tabs.forEach(tab => {
         tab.addEventListener('click', function() {
           handleTabSwitch(this, tabs, textarea, preview);
         });
       });
-  
+
       // 適用ボタン
       applyButton.addEventListener('click', function() {
         handleApply(textarea, statusBar);
       });
-  
+
       // 再取得ボタン
       refreshButton.addEventListener('click', function() {
         handleRefresh(textarea, statusBar);
       });
-  
+
+      // 自動インデントボタン
+      autoIndentButton.addEventListener('click', function() {
+        handleAutoIndent(textarea, statusBar);
+      });
+
       // 閉じるボタン（最小化）
       closeButton.addEventListener('click', function() {
         minimizeHtmlEditorPanel();
       });
-  
+
       // 最大化ボタン
       maximizeButton.addEventListener('click', function() {
         toggleMaximize(panel, maximizeButton);
       });
-  
+
+      // インデント機能（Tab/Shift+Tab）
+      if (textarea) {
+        textarea.addEventListener('keydown', function(e) {
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            handleIndent(textarea, e.shiftKey);
+          }
+        });
+      }
+
       // リサイズハンドル
       makeResizable(panel, resizeHandleLeft, 'horizontal');
       makeResizable(panel, resizeHandleBottom, 'vertical');
       makeResizable(panel, resizeHandleCorner, 'both');
-  
+
       // ドラッグ移動機能
       makeDraggable(panel, header);
     }
   
+    /**
+     * インデントを追加
+     * @param {HTMLElement} textarea - テキストエリア要素
+     * @param {boolean} unindent - trueの場合はアンインデント
+     */
+    function handleIndent(textarea, unindent = false) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      const lines = text.split('\n');
+      
+      // 選択範囲の行を特定
+      let startLine = 0;
+      let endLine = 0;
+      let charCount = 0;
+      
+      for (let i = 0; i < lines.length; i++) {
+        const lineLength = lines[i].length;
+        const lineEnd = charCount + lineLength;
+        const isLastLine = i === lines.length - 1;
+        
+        // 開始行の特定
+        if (charCount <= start && start <= lineEnd) {
+          startLine = i;
+        }
+        
+        // 終了行の特定（最後の行の場合は改行文字がないため、<= で判定）
+        if (charCount <= end && (isLastLine ? end <= lineEnd : end <= lineEnd + 1)) {
+          endLine = i;
+          if (end <= lineEnd) {
+            break;
+          }
+        }
+        
+        // 次の行の開始位置（改行文字を含む）
+        charCount += lineLength + (isLastLine ? 0 : 1);
+      }
+      
+      const indentString = CONFIG.HTML_FORMAT.INDENT_CHAR.repeat(CONFIG.HTML_FORMAT.INDENT_SIZE);
+      let newLines = [...lines];
+      
+      // 元のテキストでの各行の開始位置を計算
+      let originalLineStartPositions = [];
+      charCount = 0;
+      for (let i = 0; i < lines.length; i++) {
+        originalLineStartPositions[i] = charCount;
+        charCount += lines[i].length + (i < lines.length - 1 ? 1 : 0);
+      }
+      
+      // 選択範囲の開始位置と終了位置を行内の相対位置に変換
+      const startOffset = start - originalLineStartPositions[startLine];
+      const endOffset = end - originalLineStartPositions[endLine];
+      
+      // インデントの追加/削除と、各行の長さの変化を記録
+      let lineLengthChanges = new Array(lines.length).fill(0);
+      
+      for (let i = startLine; i <= endLine; i++) {
+        if (unindent) {
+          // アンインデント
+          const originalLine = newLines[i];
+          let removed = 0;
+          
+          if (originalLine.startsWith(indentString)) {
+            newLines[i] = originalLine.substring(indentString.length);
+            removed = indentString.length;
+          } else if (originalLine.match(/^\s+/)) {
+            // 部分的なインデントがある場合
+            const leadingSpaces = originalLine.match(/^\s*/)[0];
+            const removeCount = Math.min(indentString.length, leadingSpaces.length);
+            newLines[i] = originalLine.substring(removeCount);
+            removed = removeCount;
+          }
+          
+          lineLengthChanges[i] = -removed;
+        } else {
+          // インデント追加
+          newLines[i] = indentString + newLines[i];
+          lineLengthChanges[i] = indentString.length;
+        }
+      }
+      
+      // 新しいテキストを生成
+      const newText = newLines.join('\n');
+      
+      // 新しいテキストでの各行の開始位置を計算
+      let newLineStartPositions = [];
+      charCount = 0;
+      for (let i = 0; i < newLines.length; i++) {
+        newLineStartPositions[i] = charCount;
+        charCount += newLines[i].length + (i < newLines.length - 1 ? 1 : 0);
+      }
+      
+      // 選択範囲の開始位置と終了位置を計算
+      let newStart, newEnd;
+      
+      if (unindent) {
+        // アンインデントの場合
+        const startLineRemoved = Math.abs(lineLengthChanges[startLine]);
+        if (startOffset >= startLineRemoved) {
+          newStart = newLineStartPositions[startLine] + (startOffset - startLineRemoved);
+        } else {
+          newStart = newLineStartPositions[startLine];
+        }
+        
+        const endLineRemoved = Math.abs(lineLengthChanges[endLine]);
+        if (endOffset >= endLineRemoved) {
+          newEnd = newLineStartPositions[endLine] + (endOffset - endLineRemoved);
+        } else {
+          newEnd = newLineStartPositions[endLine];
+        }
+      } else {
+        // インデント追加の場合
+        newStart = newLineStartPositions[startLine] + indentString.length + startOffset;
+        newEnd = newLineStartPositions[endLine] + indentString.length + endOffset;
+      }
+      
+      textarea.value = newText;
+      textarea.setSelectionRange(newStart, newEnd);
+    }
+
     /**
      * タブ切り替えを処理
      * @param {HTMLElement} clickedTab - クリックされたタブ要素
@@ -516,6 +663,17 @@
         statusBar.textContent = `${CONFIG.MESSAGES.REFRESHED} - ${new Date().toLocaleTimeString()}`;
       }
     }
+
+    /**
+     * 自動インデントボタンの処理
+     * @param {HTMLElement} textarea - テキストエリア要素
+     * @param {HTMLElement} statusBar - ステータスバー要素
+     */
+    function handleAutoIndent(textarea, statusBar) {
+      const formatted = formatHtml(textarea.value);
+      textarea.value = formatted;
+      statusBar.textContent = `✓ 自動インデント適用 - ${new Date().toLocaleTimeString()}`;
+    }
   
     // 最大化前の状態を保存
     let savedPanelState = null;
@@ -538,15 +696,13 @@
           panel.style.left = savedPanelState.left;
           panel.style.right = savedPanelState.right;
           panel.style.maxHeight = savedPanelState.maxHeight;
-          
-          // エディタの高さも復元
-          const textarea = findElementByClass(panel, CONFIG.CLASSES.TEXTAREA);
-          const preview = findElementByClass(panel, CONFIG.CLASSES.PREVIEW);
-          if (textarea && preview) {
-            textarea.style.height = savedPanelState.textareaHeight;
-            preview.style.height = savedPanelState.previewHeight;
-          }
         }
+        
+        // エディタの高さを更新（パネルの高さに基づいて自動計算）
+        setTimeout(() => {
+          updateEditorAreaHeight(panel);
+        }, 0);
+        
         button.textContent = CONFIG.BUTTON_TEXTS.MAXIMIZE;
         button.title = CONFIG.BUTTON_TITLES.MAXIMIZE;
       } else {
@@ -572,19 +728,49 @@
         
         panel.classList.add(CONFIG.CLASSES.MAXIMIZED);
         
-        // エディタの高さを調整
-        if (textarea && preview) {
-          const windowHeight = window.innerHeight;
-          const editorHeight = windowHeight - 150; // ヘッダーとタブ、ステータスバーの高さを考慮
-          textarea.style.height = Math.max(200, editorHeight) + 'px';
-          preview.style.height = Math.max(200, editorHeight) + 'px';
-        }
+        // エディタの高さを調整（パネルの高さに基づいて自動計算）
+        setTimeout(() => {
+          updateEditorAreaHeight(panel);
+        }, 0);
         
         button.textContent = CONFIG.BUTTON_TEXTS.RESTORE;
         button.title = CONFIG.BUTTON_TITLES.RESTORE;
       }
     }
   
+    /**
+     * 編集エリアの高さを更新
+     * @param {HTMLElement} panel - パネル要素
+     */
+    function updateEditorAreaHeight(panel) {
+      const textarea = findElementByClass(panel, CONFIG.CLASSES.TEXTAREA);
+      const preview = findElementByClass(panel, CONFIG.CLASSES.PREVIEW);
+      
+      if (!textarea || !preview) return;
+      
+      // パネルの現在の高さを取得
+      const panelHeight = panel.offsetHeight || parseInt(document.defaultView.getComputedStyle(panel).height, 10);
+      
+      // ヘッダー、タブ、ステータスバーの高さを取得
+      const header = findElementByClass(panel, CONFIG.CLASSES.HEADER);
+      const tabs = findElementByClass(panel, CONFIG.CLASSES.TABS);
+      const statusBar = findElementByClass(panel, CONFIG.CLASSES.STATUS_BAR);
+      
+      const headerHeight = header ? header.offsetHeight : 0;
+      const tabsHeight = tabs ? tabs.offsetHeight : 0;
+      const statusBarHeight = statusBar ? statusBar.offsetHeight : 0;
+      
+      // 編集エリアの利用可能な高さを計算
+      const availableHeight = panelHeight - headerHeight - tabsHeight - statusBarHeight;
+      
+      // 最小高さを確保（200px）
+      const editorHeight = Math.max(200, availableHeight);
+      
+      // textareaとpreviewの高さを更新
+      textarea.style.height = editorHeight + 'px';
+      preview.style.height = editorHeight + 'px';
+    }
+
     /**
      * 要素をリサイズ可能にする
      * @param {HTMLElement} element - リサイズ可能にする要素
@@ -633,6 +819,8 @@
           if (height > 200) {
             element.style.height = height + 'px';
             element.style.maxHeight = 'none';
+            // リサイズ中に編集エリアの高さを更新
+            updateEditorAreaHeight(element);
           }
         }
       }
@@ -640,6 +828,9 @@
       function stopResize() {
         document.removeEventListener('mousemove', handleResize);
         document.removeEventListener('mouseup', stopResize);
+        
+        // リサイズ後に編集エリアの高さを更新
+        updateEditorAreaHeight(element);
       }
     }
   
@@ -779,58 +970,118 @@
      * @returns {string} 整形されたHTML文字列
      */
     function formatHtml(html) {
-      let formatted = html;
+      if (!html || !html.trim()) {
+        return html;
+      }
+      
       let indentLevel = 0;
       const indentString = CONFIG.HTML_FORMAT.INDENT_CHAR.repeat(CONFIG.HTML_FORMAT.INDENT_SIZE);
       
-      formatted = formatted
+      // タグの間に改行を挿入
+      let formatted = html
         .replace(/></g, '>\n<')
-        .split('\n')
-        .map(line => {
-          line = line.trim();
-          if (line.match(/^<\/\w/)) indentLevel--;
-          const indent = indentString.repeat(Math.max(0, indentLevel));
-          if (line.match(/^<\w[^>]*[^\/]>.*$/)) indentLevel++;
-          if (line.match(/^<\w[^>]*\/>$/)) { /* 自己終了タグ */ }
-          return indent + line;
-        })
-        .join('\n');
+        .split('\n');
       
-      return formatted;
+      formatted = formatted.map(line => {
+        const trimmed = line.trim();
+        
+        // 空行はそのまま返す
+        if (!trimmed) {
+          return '';
+        }
+        
+        // 閉じタグ（</tag>）の場合
+        if (/^<\/[\w-]+/.test(trimmed)) {
+          // まずインデントレベルを減らす
+          indentLevel = Math.max(0, indentLevel - 1);
+          const indent = indentString.repeat(indentLevel);
+          return indent + trimmed;
+        }
+        
+        // 自己終了タグ（<tag/>）の場合
+        if (/^<[\w-]+[^>]*\/\s*>/.test(trimmed)) {
+          const indent = indentString.repeat(indentLevel);
+          return indent + trimmed;
+        }
+        
+        // 開きタグ（<tag>）の場合
+        if (/^<[\w-]+/.test(trimmed)) {
+          const indent = indentString.repeat(indentLevel);
+          // インデントを適用してからレベルを増やす
+          indentLevel++;
+          return indent + trimmed;
+        }
+        
+        // その他の行（テキストなど）
+        const indent = indentString.repeat(indentLevel);
+        return indent + trimmed;
+      });
+      
+      return formatted.join('\n');
     }
   
     /**
      * パネルを表示
      */
     function showHtmlEditorPanel() {
+      const isNewPanel = !htmlEditorPanel;
+      
       if (!htmlEditorPanel) {
         htmlEditorPanel = createHtmlEditorPanel();
       }
-  
+
       if (!document.body.contains(htmlEditorPanel)) {
         document.body.appendChild(htmlEditorPanel);
       }
-  
+
       // パネルを表示
       htmlEditorPanel.style.display = 'flex';
+      
+      // aria-hiddenを削除（フォーカス可能な要素があるため）
+      htmlEditorPanel.removeAttribute('aria-hidden');
+      
+      // aria-hiddenが再設定されるのを監視して削除
+      if (!htmlEditorPanel._ariaHiddenObserver) {
+        htmlEditorPanel._ariaHiddenObserver = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'aria-hidden') {
+              if (htmlEditorPanel.style.display !== 'none' && 
+                  htmlEditorPanel.getAttribute('aria-hidden') === 'true') {
+                htmlEditorPanel.removeAttribute('aria-hidden');
+              }
+            }
+          });
+        });
+        htmlEditorPanel._ariaHiddenObserver.observe(htmlEditorPanel, {
+          attributes: true,
+          attributeFilter: ['aria-hidden']
+        });
+      }
       
       // 最小化アイコンを非表示
       const minimizeIcon = document.getElementById(CONFIG.MINIMIZE_ICON_ID);
       if (minimizeIcon) {
         minimizeIcon.style.display = 'none';
       }
-  
-      // エディタの内容を取得して表示
+
+      // エディタの内容を取得して表示（初回表示時のみ、またはtextareaが空の場合のみ）
       setTimeout(() => {
-        const html = getEditorHtml();
         const textarea = findElementByClass(htmlEditorPanel, CONFIG.CLASSES.TEXTAREA);
         const statusBar = findElementByClass(htmlEditorPanel, CONFIG.CLASSES.STATUS_BAR);
         
-        if (html !== null) {
-          textarea.value = formatHtml(html);
-          statusBar.textContent = `${CONFIG.MESSAGES.EDITOR_DETECTED} - ${new Date().toLocaleTimeString()}`;
+        // パネルが新しく作成された場合、またはtextareaが空の場合のみエディタから内容を取得
+        if (isNewPanel || !textarea.value.trim()) {
+          const html = getEditorHtml();
+          
+          if (html !== null) {
+            textarea.value = formatHtml(html);
+            statusBar.textContent = `${CONFIG.MESSAGES.EDITOR_DETECTED} - ${new Date().toLocaleTimeString()}`;
+          } else {
+            statusBar.textContent = CONFIG.MESSAGES.EDITOR_NOT_DETECTED;
+          }
         } else {
-          statusBar.textContent = CONFIG.MESSAGES.EDITOR_NOT_DETECTED;
+          // 既存の内容がある場合は、ステータスバーだけ更新
+          statusBar.textContent = CONFIG.BUTTON_TEXTS.READY;
         }
       }, CONFIG.DIALOG_RENDER_DELAY);
     }
@@ -841,6 +1092,8 @@
     function minimizeHtmlEditorPanel() {
       if (htmlEditorPanel && document.body.contains(htmlEditorPanel)) {
         htmlEditorPanel.style.display = 'none';
+        // 非表示時はaria-hiddenを設定（ただし、フォーカス可能な要素がない場合のみ）
+        // 実際には非表示なので、aria-hiddenは設定しない（display: noneで十分）
         // 最小化アイコンを表示
         const minimizeIcon = document.getElementById(CONFIG.MINIMIZE_ICON_ID);
         if (minimizeIcon) {
@@ -855,6 +1108,8 @@
     function hideHtmlEditorPanel() {
       if (htmlEditorPanel && document.body.contains(htmlEditorPanel)) {
         htmlEditorPanel.style.display = 'none';
+        // 非表示時はaria-hiddenを削除（display: noneで十分）
+        htmlEditorPanel.removeAttribute('aria-hidden');
       }
       // 最小化アイコンも非表示
       const minimizeIcon = document.getElementById(CONFIG.MINIMIZE_ICON_ID);
